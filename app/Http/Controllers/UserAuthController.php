@@ -26,18 +26,14 @@ class UserAuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'image' => null,
-            'password' => Hash::make(
-                $request->password
-            ),
+            'password' => Hash::make($request->password),
         ]);
 
-        $token = $user
-            ->createToken('user_token')
-            ->plainTextToken;
+        $token = $user->createToken('user_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Register success',
-            'user' => $user,
+            'user' => $user->fresh(),
             'token' => $token,
         ], 201);
     }
@@ -46,30 +42,19 @@ class UserAuthController extends Controller
 
     public function login(Request $request)
     {
-        if (
-            !Auth::attempt(
-                $request->only(
-                    'email',
-                    'password'
-                )
-            )
-        ) {
-
+        if (!Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
                 'message' => 'Login failed.'
             ], 401);
         }
 
         $user = Auth::user();
-
-        $token = $user
-            ->createToken('user_token')
-            ->plainTextToken;
+        $token = $user->createToken('user_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login success',
-            'user' => $user,
-            'token' => $token
+            'user' => $user->fresh(),
+            'token' => $token,
         ]);
     }
 
@@ -77,12 +62,20 @@ class UserAuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()
-            ->tokens()
-            ->delete();
+        $request->user()->tokens()->delete();
 
         return response()->json([
             'message' => 'Logout successful.'
+        ]);
+    }
+
+    /*ME*/
+
+    public function me(Request $request)
+    {
+        // Selalu ambil data terbaru dari database
+        return response()->json([
+            'user' => $request->user()->fresh(),
         ]);
     }
 
@@ -94,7 +87,7 @@ class UserAuthController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         $user->name = $validated['name'];
@@ -103,27 +96,13 @@ class UserAuthController extends Controller
 
             if (
                 $user->image &&
-                !Str::startsWith(
-                    $user->image,
-                    [
-                        'http://',
-                        'https://'
-                    ]
-                ) &&
-                Storage::disk('public')
-                    ->exists($user->image)
+                !Str::startsWith($user->image, ['http://', 'https://']) &&
+                Storage::disk('public')->exists($user->image)
             ) {
-
-                Storage::disk('public')
-                    ->delete($user->image);
+                Storage::disk('public')->delete($user->image);
             }
 
-            $user->image = $request
-                ->file('image')
-                ->store(
-                    'users',
-                    'public'
-                );
+            $user->image = $request->file('image')->store('users', 'public');
         }
 
         $user->save();
@@ -139,11 +118,7 @@ class UserAuthController extends Controller
     public function redirectToGoogle()
     {
         return Socialite::driver('google')
-            ->redirectUrl(
-                config(
-                    'services.google.user_redirect'
-                )
-            )
+            ->redirectUrl(config('services.google.user_redirect'))
             ->stateless()
             ->redirect();
     }
@@ -152,68 +127,33 @@ class UserAuthController extends Controller
 
     public function handleGoogleCallback()
     {
-        $reactUrl = rtrim(
-            (string) config('services.react.url'),
-            '/'
-        );
+        $reactUrl = rtrim((string) config('services.react.url'), '/');
 
         try {
-
             $googleUser = Socialite::driver('google')
-                ->redirectUrl(
-                    config(
-                        'services.google.user_redirect'
-                    )
-                )
+                ->redirectUrl(config('services.google.user_redirect'))
                 ->stateless()
                 ->user();
-
         } catch (\Throwable $exception) {
-
-            return redirect()->away(
-                $reactUrl .
-                '/login?error=google'
-            );
+            return redirect()->away($reactUrl . '/login?error=google');
         }
 
-        $user = User::firstOrNew([
-            'email' => $googleUser->getEmail()
-        ]);
+        $user = User::where('email', $googleUser->getEmail())->first();
 
-        $user->name =
-            $googleUser->getName()
-            ?: $googleUser->getNickname()
-            ?: $user->name
-            ?: 'Google User';
-
-        $user->image =
-            $googleUser->getAvatar()
-            ?: $user->image;
-
-        $user->email_verified_at =
-            $user->email_verified_at
-            ?: now();
-
-        if (! $user->exists) {
-
-            $user->password = Hash::make(
-                Str::random(40)
-            );
+        if (!$user) {
+            $user = User::create([
+                'name'              => $googleUser->getName() ?: $googleUser->getNickname() ?: 'Google User',
+                'email'             => $googleUser->getEmail(),
+                'image'             => null,
+                'password'          => Hash::make(Str::random(40)),
+                'email_verified_at' => now(),
+            ]);
         }
 
-        $user->save();
-
-        $token = $user
-            ->createToken(
-                'google_user_token'
-            )
-            ->plainTextToken;
+        $token = $user->createToken('google_user_token')->plainTextToken;
 
         return redirect()->away(
-            $reactUrl .
-            '/google-success?token=' .
-            urlencode($token) .
-            '&from=google'
+            $reactUrl . '/google-success?token=' . urlencode($token) . '&from=google'
         );
     }
 }

@@ -18,21 +18,24 @@ class ReactAccessController extends Controller
         $user = User::firstOrCreate(
             ['email' => $admin->email],
             [
-                'name' => $admin->name,
-                'password' => Hash::make(Str::random(40)),
-                'image' => $admin->image,
+                'name'              => $admin->name,
+                'password'          => Hash::make(Str::random(40)),
+                'image'             => $admin->image,
+                'email_verified_at' => now(),
             ]
         );
 
-        $user->forceFill([
-            'name' => $admin->name,
-            'image' => $admin->image,
-            'email_verified_at' => $user->email_verified_at ?? now(),
-        ])->save();
+        // ✅ TIDAK overwrite name/image — data lokal user diutamakan
+        if (! $user->email_verified_at) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
 
-        $token = $user->createToken('admin_dashboard_react')->plainTextToken;
+        $token    = $user->createToken('admin_dashboard_react')->plainTextToken;
         $reactUrl = rtrim((string) config('services.react.url'), '/');
 
-        return redirect()->away($reactUrl . '/admin-login?token=' . urlencode($token) . '&from=admin');
+        return redirect()->away(
+            $reactUrl . '/admin-login?token=' . urlencode($token) . '&from=admin'
+        );
     }
 }

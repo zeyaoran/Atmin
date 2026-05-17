@@ -90,12 +90,8 @@ class AdminAuthController extends Controller
                 ->with('error', 'This Google account is not registered as an admin.');
         }
 
-        $admin->forceFill([
-            'name' => $googleUser->getName() ?: $admin->name,
-            'image' => $googleUser->getAvatar() ?: $admin->image,
-        ])->save();
 
-        Auth::guard('admin')->login($admin, true);
+        Auth::guard('admin')->login($admin->fresh(), true);
         request()->session()->regenerate();
 
         return redirect()->intended(route('admin.dashboard'));

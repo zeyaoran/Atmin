@@ -36,7 +36,7 @@ return [
     ],
 
     'react' => [
-        'url' => env('REACT_APP_URL', 'http://127.0.0.1:5173'),
+        'url' => env('REACT_APP_URL', 'http://localhost:5173'),
     ],
 
     'slack' => [
