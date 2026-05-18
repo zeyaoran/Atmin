@@ -46,26 +46,24 @@ class DashboardController extends Controller
             'tickets_sold' => (int) ($monthly[$m]->tickets ?? 0),
         ]);
 
-        /*
-        |--------------------------------------------
-        | ARTIST
-        |--------------------------------------------
-        */
-        $artistRaw = (clone $base)
-            ->join('tickets', 'transactions.id_tiket', '=', 'tickets.id')
-            ->join('events', 'tickets.event_id', '=', 'events.id')
-            ->join('artists', 'events.artist_id', '=', 'artists.id')
+       
+        // ── ARTIST ──────────────────────────────────────────────
+        $artistRaw = Artist::leftJoin('events', 'artists.id', '=', 'events.artist_id')
+            ->leftJoin('tickets', 'events.id', '=', 'tickets.event_id')
+            ->leftJoin('transactions', function ($join) {
+                $join->on('tickets.id', '=', 'transactions.id_tiket')
+                    ->where('transactions.status_pembayaran', '=', 'success');
+            })
             ->select(
                 'artists.name',
-                DB::raw('SUM(transactions.jumlah) as total')
+                DB::raw('COALESCE(SUM(transactions.jumlah), 0) as total')
             )
-            ->groupBy('artists.name')
+            ->groupBy('artists.id', 'artists.name')
             ->orderByDesc('total')
             ->get();
 
-        $artistLabels = $artistRaw->pluck('name');
-        $artistData = $artistRaw->pluck('total')->map(fn ($v) => (int) $v)->values();
-
+        $artistLabels = $artistRaw->pluck('name')->values()->toArray();
+        $artistData   = $artistRaw->pluck('total')->map(fn ($v) => (int) $v)->values()->toArray();
         /*
         |--------------------------------------------
         | LOCATION
@@ -131,7 +129,7 @@ class DashboardController extends Controller
 
             // ARTIST
             'artistLabels' => $artistLabels,
-            'artistData' => $artistData,
+            'artistData'   => $artistData,
 
             // LOCATION
             'locationLabels' => $locationLabels,

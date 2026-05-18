@@ -25,7 +25,6 @@ class ReactAccessController extends Controller
             ]
         );
 
-        // ✅ TIDAK overwrite name/image — data lokal user diutamakan
         if (! $user->email_verified_at) {
             $user->email_verified_at = now();
             $user->save();

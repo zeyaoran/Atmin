@@ -40,9 +40,9 @@ Route::middleware('auth:sanctum')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::apiResource('events',  EventController::class)->only(['index', 'show']);
-Route::apiResource('artists', ArtistController::class)->only(['index', 'show']);
-Route::apiResource('tickets', TicketController::class)->only(['index', 'show']);
+Route::apiResource('events',  EventController::class);
+Route::apiResource('artists', ArtistController::class);
+Route::apiResource('tickets', TicketController::class);
 
 /*
 |--------------------------------------------------------------------------
