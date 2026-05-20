@@ -14,7 +14,6 @@ class TicketController extends Controller
     {
         $query = Ticket::with(['artist', 'event']);
 
-        // 🔥 FILTER BY EVENT (penting untuk checkout)
         if ($request->event_id) {
             $query->where('event_id', $request->event_id);
         }

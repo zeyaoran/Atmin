@@ -17,19 +17,11 @@ class DashboardController extends Controller
     {
         $base = Transaction::where('status_pembayaran', 'success');
 
-        /*
-        |--------------------------------------------
-        | TOTALS
-        |--------------------------------------------
-        */
+        /*TOTALS*/
         $totalTransactions = (clone $base)->count();
         $totalRevenue = (clone $base)->sum('total_harga');
 
-        /*
-        |--------------------------------------------
-        | MONTHLY
-        |--------------------------------------------
-        */
+        /*MONTHLY*/
         $monthly = (clone $base)
             ->select(
                 DB::raw('MONTH(tanggal_transaksi) as month'),
@@ -47,7 +39,7 @@ class DashboardController extends Controller
         ]);
 
        
-        // ── ARTIST ──────────────────────────────────────────────
+        // ARTIST 
         $artistRaw = Artist::leftJoin('events', 'artists.id', '=', 'events.artist_id')
             ->leftJoin('tickets', 'events.id', '=', 'tickets.event_id')
             ->leftJoin('transactions', function ($join) {
@@ -64,11 +56,9 @@ class DashboardController extends Controller
 
         $artistLabels = $artistRaw->pluck('name')->values()->toArray();
         $artistData   = $artistRaw->pluck('total')->map(fn ($v) => (int) $v)->values()->toArray();
-        /*
-        |--------------------------------------------
-        | LOCATION
-        |--------------------------------------------
-        */
+
+
+        /*LOCATION*/
         $salesByLocation = Transaction::where('status_pembayaran', 'success')
             ->join('tickets', 'transactions.id_tiket', '=', 'tickets.id')
             ->join('events', 'tickets.event_id', '=', 'events.id')
@@ -83,11 +73,7 @@ class DashboardController extends Controller
         $locationLabels = $salesByLocation->pluck('location')->values();
         $locationData = $salesByLocation->pluck('total')->map(fn ($v) => (int) $v)->values();
 
-        /*
-        |--------------------------------------------
-        | PAYMENT
-        |--------------------------------------------
-        */
+        /*PAYMENT*/
         $paymentMethods = (clone $base)
             ->select(
                 'metode_pembayaran',
@@ -97,21 +83,13 @@ class DashboardController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        /*
-        |--------------------------------------------
-        | LATEST
-        |--------------------------------------------
-        */
+        /*LATEST*/
         $latestTransactions = Transaction::with(['user', 'ticket.event'])
             ->orderByDesc('id_transaksi')
             ->take(10)
             ->get();
 
-        /*
-        |--------------------------------------------
-        | RETURN VIEW
-        |--------------------------------------------
-        */
+        /*RETURN VIEW*/
         return view('admin.dashboard', [
 
             // STATS
